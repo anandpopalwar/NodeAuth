@@ -1,0 +1,27 @@
+{
+  "name": "nodeauth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node ./app.js",
+    "dev": "node --watch ./app.js"
+  },
+  "dependencies": {
+    "cookie-parser": "~1.4.4",
+    "debug": "~2.6.9",
+    "dotenv": "^17.3.1",
+    "express": "~4.16.1",
+    "http-errors": "~1.6.3",
+    "jade": "~1.11.0",
+    "mongodb": "^7.1.0",
+    "mongoose": "^9.2.1",
+    "morgan": "~1.9.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.0.0",
+    "eslint-config-xo": "^0.50.0",
+    "globals": "^17.3.0"
+  }
+}
