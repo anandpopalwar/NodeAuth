@@ -1,6 +1,6 @@
-import mongoose from "mongoose";
+import { model, Schema } from "mongoose";
 
-const UserSchema = new mongoose.Schema(
+const UserSchema = new Schema(
   {
     username: {
       type: String,
@@ -19,7 +19,7 @@ const UserSchema = new mongoose.Schema(
       lowercase: true,
     },
     password: {
-      type: true,
+      type: String,
       required: [true, "password is required"],
       trim: true,
       match: [
@@ -35,6 +35,6 @@ const UserSchema = new mongoose.Schema(
   },
 );
 
-const UserModal = new mongoose.Model("user", UserSchema);
+const UserModal = new model("user", UserSchema);
 
 export default UserModal;

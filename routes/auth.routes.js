@@ -3,7 +3,7 @@ import { RegisterUser } from "../controllers/auth.controller.js";
 
 const authRouter = Router();
 
-authRouter.get("/register", RegisterUser);
+authRouter.post("/register", RegisterUser);
 authRouter.get("/login");
 authRouter.get("/logout");
 // authRouter.get("/deactivate", RegisterUser);
