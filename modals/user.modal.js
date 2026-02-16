@@ -1,5 +1,17 @@
 import { model, Schema } from "mongoose";
 
+const RefreshTokenSchema = new Schema(
+  {
+    token: {
+      type: String,
+      required: false,
+    },
+  },
+  {
+    timestamps: true,
+  },
+);
+
 const UserSchema = new Schema(
   {
     username: {
@@ -29,6 +41,12 @@ const UserSchema = new Schema(
       minLength: 6,
       select: false, // password wont come in queries bydefault
     },
+    isActive: {
+      type: Boolean,
+      default: false,
+      required:true
+    },
+    refreshtokens: [RefreshTokenSchema],
   },
   {
     timestamps: true,

@@ -1,7 +1,8 @@
-import bcrypt from "bcryptjs";
+import bcrypt, { compare } from "bcryptjs";
 import UserModal from "../modals/user.modal.js";
 import mongoose from "mongoose";
-
+import jwt from "jsonwebtoken";
+import { JWT_SECRET_KEY } from "../configs/dotenv.config.js";
 export const RegisterUser = async (req, res, next) => {
   // session can be used for to manage a crud w db
   // eg if somthing happened while performing crud in db to
@@ -50,7 +51,7 @@ export const RegisterUser = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      messege: "User created successfully",
+      messege: username + " user created successfully",
     });
   } catch (err) {
     console.log(err);
@@ -59,5 +60,79 @@ export const RegisterUser = async (req, res, next) => {
     next(err);
   } finally {
     await session.endSession();
+  }
+};
+
+export const LoginUser = async (req, res, next) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const { email, password } = req.query;
+    console.log(req.query);
+    console.log(email);
+    const User = await UserModal.findOne({ email }).select("+password");
+    console.log(User);
+    if (User === null) {
+      console.log("first");
+      let _err = new Error();
+      _err.messege = "User dont exists";
+      _err.statusCode = 404;
+      throw _err;
+    }
+
+    const isPasswordCorrect = await compare(password, User.password);
+    if (!isPasswordCorrect) {
+      console.log("first");
+      let _err = new Error();
+      _err.messege = "Wrong password";
+      _err.statusCode = 400;
+      throw _err;
+    }
+
+    let userObj = {
+      username: User.username,
+      _id: User._id,
+    };
+
+    const accessToken = jwt.sign(userObj, JWT_SECRET_KEY, {
+      expiresIn: "1h",
+    });
+    // const refreshToken = jwt.sign(userObj, JWT_SECRET_KEY, {
+    //   expiresIn: "1d",
+    // });
+
+    userObj = { ...userObj, accessToken, email: User.email };
+    delete userObj.password;
+
+    console.log(userObj);
+    console.log("User exist");
+
+    // await UserModal.findOneAndUpdate({_id})
+
+    const ex = await UserModal.findOneAndUpdate(
+      { _id: userObj._id },
+      {
+        isActive: true,
+      },
+      {
+        session,
+      },
+    );
+    console.log(ex);
+    session.commitTransaction();
+
+    res.status(200).json({
+      success: true,
+      messege: "Use login successfully",
+      body: { ...userObj },
+    });
+    
+  } catch (err) {
+    session.abortTransaction();
+    next(err);
+  } finally {
+    session.endSession();
   }
 };
