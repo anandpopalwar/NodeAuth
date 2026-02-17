@@ -22,7 +22,7 @@ export const RegisterUser = async (req, res, next) => {
     if (User) {
       console.log("user exist");
       let _err = new Error();
-      _err.messege = "User already exists";
+      _err.message = "User already exists";
       _err.statusCode = 409;
       throw _err;
     }
@@ -51,12 +51,12 @@ export const RegisterUser = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      messege: username + " user created successfully",
+      message: username + " user created successfully",
     });
   } catch (err) {
     console.log(err);
     await session.abortTransaction();
-    // err.messege = err.messege || "Somthing went wrong";
+    // err.message = err.message || "Somthing went wrong";
     next(err);
   } finally {
     await session.endSession();
@@ -77,7 +77,7 @@ export const LoginUser = async (req, res, next) => {
     if (User === null) {
       console.log("first");
       let _err = new Error();
-      _err.messege = "User dont exists";
+      _err.message = "User dont exists";
       _err.statusCode = 404;
       throw _err;
     }
@@ -86,7 +86,7 @@ export const LoginUser = async (req, res, next) => {
     if (!isPasswordCorrect) {
       console.log("first");
       let _err = new Error();
-      _err.messege = "Wrong password";
+      _err.message = "Wrong password";
       _err.statusCode = 400;
       throw _err;
     }
@@ -115,6 +115,7 @@ export const LoginUser = async (req, res, next) => {
       { _id: userObj._id },
       {
         isActive: true,
+        refreshtokens: [accessToken],
       },
       {
         session,
@@ -125,14 +126,44 @@ export const LoginUser = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      messege: "Use login successfully",
+      message: "Use login successfully",
       body: { ...userObj },
     });
-    
   } catch (err) {
     session.abortTransaction();
     next(err);
   } finally {
     session.endSession();
+  }
+};
+
+// server receive access/refresh token from client
+// backend decode that token and get the _id of user
+// and that token is removed from db and
+// 1st if multidevice login system is there
+//     then user active status will be handled
+// 2nd if single divice login system is there
+//     then false the user active status
+
+export const LogoutUser = async (req, res, next) => {
+  // const session = await mongoose.startSession();
+
+  try {
+    const { id } = req.params;
+    console.log(id);
+
+    const decodedToken = jwt.verify(id, JWT_SECRET_KEY);
+
+    console.log(decodedToken);
+    // session.startTransaction();
+
+    res.status(200).json({
+      success: true,
+      message: "User logout successfully",
+    });
+  } catch (err) {
+    console.log(err);
+    next(err);
+    console.log("Logout successfully");
   }
 };

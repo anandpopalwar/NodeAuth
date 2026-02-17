@@ -2,10 +2,10 @@ const errorMiddleware = (err, req, res, next) => {
   try {
     let error = { ...err };
     console.log(error);
-    console.log(error.messege);
+    console.log(error.message);
     res.status(error.statusCode || 500).json({
       success: false,
-      messege: error.messege ?? "Internal sever error",
+      message: error.message ?? "Internal sever error",
     });
   } catch (_err) {
     next(_err);
