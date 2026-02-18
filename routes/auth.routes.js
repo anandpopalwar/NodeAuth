@@ -1,11 +1,12 @@
 import { Router } from "express";
-import { LoginUser, LogoutUser, RegisterUser } from "../controllers/auth.controller.js";
+import { getToken, LoginUser, LogoutUser, RegisterUser } from "../controllers/auth.controller.js";
 
 const authRouter = Router();
 
 authRouter.post("/register", RegisterUser);
-authRouter.get("/login",LoginUser);
-authRouter.delete("/logout/:id",LogoutUser);
+authRouter.post("/login",LoginUser);
+authRouter.delete("/logout",LogoutUser);
+authRouter.get("/refresh",getToken);
 // authRouter.get("/deactivate", RegisterUser);
 
 export default authRouter;

@@ -55,7 +55,9 @@ export const RegisterUser = async (req, res, next) => {
     });
   } catch (err) {
     console.log(err);
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     // err.message = err.message || "Somthing went wrong";
     next(err);
   } finally {
@@ -69,8 +71,10 @@ export const LoginUser = async (req, res, next) => {
   try {
     session.startTransaction();
 
-    const { email, password } = req.query;
-    console.log(req.query);
+    console.log(req.body);
+
+    const { email, password } = req.body;
+
     console.log(email);
     const User = await UserModal.findOne({ email }).select("+password");
     console.log(User);
@@ -97,7 +101,7 @@ export const LoginUser = async (req, res, next) => {
     };
 
     const accessToken = jwt.sign(userObj, JWT_SECRET_KEY, {
-      expiresIn: "1h",
+      expiresIn: 2 * 60,
     });
     // const refreshToken = jwt.sign(userObj, JWT_SECRET_KEY, {
     //   expiresIn: "1d",
@@ -111,18 +115,22 @@ export const LoginUser = async (req, res, next) => {
 
     // await UserModal.findOneAndUpdate({_id})
 
-    const ex = await UserModal.findOneAndUpdate(
+    await UserModal.findOneAndUpdate(
       { _id: userObj._id },
       {
-        isActive: true,
-        refreshtokens: [accessToken],
+        $set: {
+          isActive: true,
+          token: accessToken,
+        },
       },
       {
         session,
+        returnDocument: true,
+        runValidators: true,
       },
     );
-    console.log(ex);
-    session.commitTransaction();
+
+    await session.commitTransaction();
 
     res.status(200).json({
       success: true,
@@ -130,10 +138,13 @@ export const LoginUser = async (req, res, next) => {
       body: { ...userObj },
     });
   } catch (err) {
-    session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    console.log(err);
     next(err);
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 };
 
@@ -146,24 +157,115 @@ export const LoginUser = async (req, res, next) => {
 //     then false the user active status
 
 export const LogoutUser = async (req, res, next) => {
-  // const session = await mongoose.startSession();
+  const session = await mongoose.startSession();
 
   try {
-    const { id } = req.params;
-    console.log(id);
+    session.startTransaction();
+    const { authorization } = req.headers;
+    console.log(authorization);
+    const token = authorization?.split(" ")[1];
 
-    const decodedToken = jwt.verify(id, JWT_SECRET_KEY);
+    const User = await UserModal.findOneAndUpdate(
+      { token: token },
+      {
+        $set: {
+          isActive: false,
+          token: null,
+        },
+      },
+      { session, returnDocument: true },
+    );
 
-    console.log(decodedToken);
-    // session.startTransaction();
+    console.log("XXXXXXXX", { User });
+
+    if (User === null) {
+      console.log("first");
+      let _err = new Error();
+      _err.message = "User dont exists";
+      _err.statusCode = 404;
+      throw _err;
+    }
+
+    await session.commitTransaction();
 
     res.status(200).json({
       success: true,
       message: "User logout successfully",
     });
   } catch (err) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     console.log(err);
     next(err);
     console.log("Logout successfully");
+  } finally {
+    await session.endSession();
+  }
+};
+
+export const getToken = async (req, res, next) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+    const { authorization } = req.headers;
+    console.log(authorization);
+    const token = authorization?.split(" ")[1];
+
+    const User = await UserModal.findOne({ token: token });
+
+    if (User === null) {
+      let _err = new Error();
+      _err.message = "User dont exists";
+      _err.statusCode = 404;
+      throw _err;
+    }
+
+    let userObj = {
+      username: User.username,
+      _id: User._id,
+    };
+
+    const accessToken = jwt.sign(userObj, JWT_SECRET_KEY, {
+      expiresIn: 2 * 60,
+    });
+    // const refreshToken = jwt.sign(userObj, JWT_SECRET_KEY, {
+    //   expiresIn: "1d",
+    // });
+
+    userObj = { ...userObj, accessToken, email: User.email };
+
+    // await UserModal.findOneAndUpdate({_id})
+
+    await UserModal.findOneAndUpdate(
+      { _id: userObj._id },
+      {
+        $set: {
+          isActive: true,
+          token: accessToken,
+        },
+      },
+      {
+        session,
+        returnDocument: true,
+        runValidators: true,
+      },
+    );
+
+    await session.commitTransaction();
+
+    res.status(200).json({
+      success: true,
+      message: "Token got successfully",
+      body: { ...userObj },
+    });
+  } catch (err) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    next(err);
+  } finally {
+    session.endSession();
   }
 };

@@ -1,17 +1,5 @@
 import { model, Schema } from "mongoose";
 
-const RefreshTokenSchema = new Schema(
-  {
-    token: {
-      type: String,
-      required: false,
-    },
-  },
-  {
-    timestamps: true,
-  },
-);
-
 const UserSchema = new Schema(
   {
     username: {
@@ -44,9 +32,12 @@ const UserSchema = new Schema(
     isActive: {
       type: Boolean,
       default: false,
-      required:true
+      required: true,
     },
-    refreshtokens: [RefreshTokenSchema],
+    token: {
+      type: String,
+      required: false,
+    },
   },
   {
     timestamps: true,
