@@ -38,6 +38,7 @@ const UserSchema = new Schema(
       type: String,
       required: false,
     },
+    googleId: { type: String, required: true, unique: true },
   },
   {
     timestamps: true,
@@ -47,3 +48,22 @@ const UserSchema = new Schema(
 const UserModal = new model("user", UserSchema);
 
 export default UserModal;
+
+// const db = {};
+// db.createColletion("public", {
+//   validator: {
+//     $jsonSchema: {
+//       required: ["name", "age"],
+//       properties: {
+//         name: {
+//           bsonType: "string",
+//           description: "must be a string",
+//         },
+//         age: {
+//           bsonType: "number",
+//           description: "must be a number",
+//         },
+//       },
+//     },
+//   },
+// });

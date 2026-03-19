@@ -19,7 +19,6 @@ const authMiddleware = (req, res, next) => {
     //   let _err = new Error();
     //   _err.message = "Unauthorized access";
     //   _err.statusCode = 401;
-
     //   throw _err;
     // }
 

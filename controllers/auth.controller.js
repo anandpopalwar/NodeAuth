@@ -1,8 +1,14 @@
 import bcrypt, { compare } from "bcryptjs";
 import UserModal from "../modals/user.modal.js";
-import mongoose from "mongoose";
+import mongoose, { mongo } from "mongoose";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET_KEY } from "../configs/dotenv.config.js";
+import {
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  GOOGLE_REDIRECT_URI,
+  JWT_SECRET_KEY,
+} from "../configs/dotenv.config.js";
+import axios from "axios";
 export const RegisterUser = async (req, res, next) => {
   // session can be used for to manage a crud w db
   // eg if somthing happened while performing crud in db to
@@ -267,5 +273,121 @@ export const getToken = async (req, res, next) => {
     next(err);
   } finally {
     session.endSession();
+  }
+};
+
+export const LoginWithGoogle = async (req, res, next) => {
+  try {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_REDIRECT_URI) {
+      let err = new Error();
+      err.message = "Somthing went Wrong, Server Creds not found!";
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const params = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: GOOGLE_REDIRECT_URI,
+      response_type: "code",
+      scope: "openid email profile",
+      access_type: "offline",
+    });
+    res.status(200).json({
+      url: `https://accounts.google.com/o/oauth2/v2/auth?${params}`,
+    });
+  } catch (err) {
+    console.log(err);
+    next(err);
+    console.log("Logout successfully");
+  }
+};
+export const GoogleLogin = async (req, res, next) => {
+  const session = await new mongoose.startSession();
+  try {
+    session.startTransaction();
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_REDIRECT_URI) {
+      let err = new Error();
+      err.message = "Somthing went Wrong, Server Creds not found!";
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const { code } = req.headers;
+    if (!code) return res.status(400).json({ error: "No code provided" });
+    console.log(code);
+
+    const { data: tokenData } = await axios.post(
+      "https://oauth2.googleapis.com/token",
+      {
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: GOOGLE_REDIRECT_URI,
+        grant_type: "authorization_code",
+      },
+    );
+
+    console.log(tokenData);
+
+    // Get user profile from Google
+    const { data: profile } = await axios.get(
+      "https://www.googleapis.com/oauth2/v3/userinfo",
+      { headers: { Authorization: `Bearer ${tokenData.access_token}` } },
+    );
+
+    console.log(profile);
+    const User = await UserModal.findOneAndUpdate(
+      {
+        email: profile.email,
+      },
+      {
+        username: profile.email,
+        email: profile.email,
+        isActive: true,
+      },
+      {
+        upsert: true,
+        new: true,
+        session,
+        returnDocument: true,
+        runValidators: false,
+      },
+    );
+
+    let userObj = {
+      username: User.username,
+      _id: User._id,
+    };
+
+    const accessToken = jwt.sign(userObj, JWT_SECRET_KEY, {
+      expiresIn: 2 * 60,
+    });
+
+    await UserModal.findOneAndUpdate(
+      {
+        email: profile.email,
+      },
+      {
+        token: accessToken,
+      },
+      {
+        session,
+      },
+    );
+
+    userObj = { ...userObj, accessToken, email: User.email };
+
+    await session.commitTransaction();
+
+    res.status(200).json({
+      success: true,
+      message: "Use login successfully",
+      body: { ...userObj },
+    });
+  } catch (err) {
+    await session.abortTransaction();
+    console.log(err);
+    next(err);
+    console.log("Logout successfully");
   }
 };
